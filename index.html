@@ -37,14 +37,25 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Kategori Kerusakan</label>
-                        <select class="form-select" name="kategori" required>
-                            <option value="" selected disabled>Pilih Kategori...</option>
-                            <option value="Komputer / PC">Komputer / PC</option>
-                            <option value="Jaringan / Internet">Jaringan / Internet</option>
-                            <option value="Kelistrikan / AC">Kelistrikan / AC</option>
+                         <label class="form-label">Ruang LAB</label>
+                         <select class="form-select" name="ruang_lab" id="ruang_lab" required>
+                          <option value="" selected disabled>Memuat pilihan ruangan...</option>
+                       </select>
+                    </div>
+
+                    <div class="mb-3">
+                          <label class="form-label">Kategori Kerusakan</label>
+                          <select class="form-select" name="kategori" id="kategori" required>
+                          <option value="" selected disabled>Memuat pilihan kategori...</option>
                         </select>
                     </div>
+
+<div class="mb-3">
+    <label class="form-label">Tingkat Prioritas</label>
+    <select class="form-select" name="prioritas" id="prioritas" required>
+        <option value="" selected disabled>Memuat pilihan prioritas...</option>
+    </select>
+</div>
 
                     <div class="mb-3">
                         <label class="form-label">Tingkat Prioritas</label>
@@ -76,6 +87,35 @@
 
     // PASTE URL WEB APP GOOGLE SCRIPT ANDA DI BAWAH INI
     const scriptURL = 'https://script.google.com/macros/s/AKfycbx_sHxiph4Fw1cO83crglecsRmZNK6wPlXu4-Eq91J28pjf33WapnXZo4CDxtGoUAfI/exec';
+    // FITUR BARU: MENGAMBIL OPSI DARI GOOGLE SHEETS
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch(scriptURL) // Ini memanggil fungsi doGet() di Apps Script
+            .then(response => response.json())
+            .then(data => {
+                if(data.error) {
+                    console.error("Error dari server:", data.error);
+                    return;
+                }
+                
+                // Fungsi untuk memasukkan data array ke dalam elemen <select>
+                function isiDropdown(idDropdown, arrayData, teksDefault) {
+                    const dropdown = document.getElementById(idDropdown);
+                    dropdown.innerHTML = `<option value="" selected disabled>${teksDefault}</option>`;
+                    arrayData.forEach(item => {
+                        let option = document.createElement("option");
+                        option.value = item;
+                        option.textContent = item;
+                        dropdown.appendChild(option);
+                    });
+                }
+
+                // Masukkan data ke masing-masing kolom
+                if(data.ruangan) isiDropdown('ruang_lab', data.ruangan, 'Pilih Ruangan...');
+                if(data.kategori) isiDropdown('kategori', data.kategori, 'Pilih Kategori...');
+                if(data.prioritas) isiDropdown('prioritas', data.prioritas, 'Pilih Prioritas...');
+            })
+            .catch(error => console.error('Gagal mengambil data:', error));
+    });
 
     form.addEventListener('submit', e => {
         e.preventDefault();
@@ -104,6 +144,4 @@
 </script>
 
 </body>
-
 </html>
-
