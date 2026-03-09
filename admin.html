@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Helpdesk IT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style> 
+        body { background-color: #f4f7f6; padding-top: 30px; padding-bottom: 50px; } 
+        .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); } 
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #e9ecef; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .keluhan-text { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="card p-4 shadow-sm" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-4">🔒 Login Teknisi</h3>
+        <div class="mb-3">
+            <label class="form-label">Password Admin</label>
+            <input type="password" class="form-control" id="passwordInput" placeholder="Masukkan password...">
+        </div>
+        <button onclick="cekPassword()" class="btn btn-primary w-100">Masuk</button>
+    </div>
+</div>
+
+<div class="container-fluid px-4 d-none" id="dashboardScreen">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark">🛠️ Dashboard Teknisi</h2>
+        <div>
+            <button onclick="muatDataLaporan()" class="btn btn-outline-primary me-2">🔄 Refresh Tabel</button>
+            <button onclick="logoutAdmin()" class="btn btn-danger">Keluar (Logout)</button>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <h5 class="mb-3">Daftar Laporan Masuk</h5>
+        
+        <div id="loadingText" class="text-center my-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">Mengambil data dari Google Sheets...</p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle d-none" id="tabelLaporan">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Pelapor</th>
+                        <th>Ruangan</th>
+                        <th>Kategori</th>
+                        <th>Prioritas</th>
+                        <th>Keluhan</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="isiTabel">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- PENGATURAN PASSWORD ---
+    const passwordAdmin = "admin123"; // Silakan ganti password ini jika perlu
+
+    // CEK STATUS LOGIN SAAT HALAMAN DIBUKA ATAU DI-REFRESH
+    document.addEventListener("DOMContentLoaded", function() {
+        if (localStorage.getItem("admin_logged_in") === "true") {
+            // Jika sudah pernah login, langsung sembunyikan layar login dan muat data
+            document.getElementById('loginScreen').classList.add('d-none');
+            document.getElementById('dashboardScreen').classList.remove('d-none');
+            muatDataLaporan();
+        }
+    });
+
+    // FUNGSI LOGIN
+    function cekPassword() {
+        const input = document.getElementById('passwordInput').value;
+        if(input === passwordAdmin) {
+            // Simpan memori login di browser
+            localStorage.setItem("admin_logged_in", "true");
+            
+            // Tampilkan dashboard
+            document.getElementById('loginScreen').classList.add('d-none');
+            document.getElementById('dashboardScreen').classList.remove('d-none');
+            muatDataLaporan(); 
+        } else {
+            alert('Password salah!');
+        }
+    }
+
+    // FUNGSI LOGOUT (Menghapus memori login)
+    function logoutAdmin() {
+        localStorage.removeItem("admin_logged_in");
+        location.reload(); // Refresh halaman agar kembali ke layar login
+    }
+
+
+    // PASTE URL WEB APP GOOGLE SCRIPT ANDA DI BAWAH INI
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbwKx9e8UicLXaqeSZ-Nv0xfprRagzR1zDvj213HsXymQamqPfNrRv2XJUF7LgUZ3uLz/exec';
+
+
+    // Mengambil data dari Google Sheets
+    function muatDataLaporan() {
+        // Menampilkan efek loading saat tombol refresh ditekan
+        document.getElementById('tabelLaporan').classList.add('d-none');
+        document.getElementById('loadingText').classList.remove('d-none');
+
+        fetch(scriptURL + "?action=getReports")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingText').classList.add('d-none');
+                document.getElementById('tabelLaporan').classList.remove('d-none');
+                
+                const tbody = document.getElementById('isiTabel');
+                tbody.innerHTML = ''; // Bersihkan tabel
+
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Belum ada laporan masuk.</td></tr>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    let bgPrioritas = 'bg-info text-dark';
+                    if(item.prioritas === 'Sedang') bgPrioritas = 'bg-warning text-dark';
+                    if(item.prioritas === 'Tinggi') bgPrioritas = 'bg-danger';
+
+                    const opsiStatus = ['Menunggu', 'Diproses', 'Selesai'];
+                    let statusDropdown = `<select class="form-select form-select-sm status-dropdown" data-row="${item.row}" style="width: 120px;" onchange="updateStatus(this)">`;
+                    opsiStatus.forEach(opsi => {
+                        let selected = (item.status === opsi) ? "selected" : "";
+                        statusDropdown += `<option value="${opsi}" ${selected}>${opsi}</option>`;
+                    });
+                    statusDropdown += `</select>`;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.tanggal}</td>
+                        <td><strong>${item.nama}</strong></td>
+                        <td>${item.ruangan}</td>
+                        <td>${item.kategori}</td>
+                        <td><span class="badge ${bgPrioritas}">${item.prioritas}</span></td>
+                        <td class="keluhan-text" title="${item.deskripsi}">${item.deskripsi}</td>
+                        <td>${statusDropdown}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                document.getElementById('loadingText').innerHTML = '<span class="text-danger">Gagal memuat data. Periksa koneksi atau URL Web App Anda.</span>';
+            });
+    }
+
+    // Fungsi untuk mengirim perubahan status ke Google Sheets
+    function updateStatus(selectElement) {
+        const barisDiSheets = selectElement.getAttribute('data-row');
+        const statusBaru = selectElement.value;
+        
+        selectElement.disabled = true;
+        const warnaAsli = selectElement.style.backgroundColor;
+        selectElement.style.backgroundColor = "#e9ecef";
+
+        const formData = new FormData();
+        formData.append('action', 'updateStatus');
+        formData.append('row', barisDiSheets);
+        formData.append('status', statusBaru);
+
+        fetch(scriptURL, { method: 'POST', body: formData })
+            .then(response => response.text())
+            .then(result => {
+                selectElement.disabled = false;
+                selectElement.style.backgroundColor = warnaAsli;
+                
+                if(statusBaru === 'Selesai') selectElement.style.backgroundColor = '#d1e7dd';
+                else if(statusBaru === 'Diproses') selectElement.style.backgroundColor = '#fff3cd';
+                else selectElement.style.backgroundColor = '#f8d7da';
+            })
+            .catch(error => {
+                alert('Gagal mengupdate status. Periksa koneksi internet.');
+                selectElement.disabled = false;
+            });
+    }
+
+    // Mengizinkan login dengan menekan tombol Enter
+    document.getElementById("passwordInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") { event.preventDefault(); cekPassword(); }
+    });
+</script>
+
+</body>
+</html>
