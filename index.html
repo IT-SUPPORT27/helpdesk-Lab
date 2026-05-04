@@ -31,6 +31,11 @@
                     </div>
 
                     <div class="mb-3">
+                         <label class="form-label">Nomor PC / Aset</label>
+                         <input type="text" class="form-control" name="no_pc" id="no_pc" required placeholder="Contoh: PC-05 atau 05">
+                    </div>
+
+                    <div class="mb-3">
                           <label class="form-label">Kategori Kerusakan</label>
                           <select class="form-select" name="kategori" id="kategori" required>
                           <option value="" selected disabled>Memuat pilihan kategori...</option>
@@ -46,7 +51,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Deskripsi Kendala</label>
-                        <textarea class="form-control" name="deskripsi" rows="3" required placeholder="Contoh: PC nomor 05 tidak bisa menyala dan berbunyi beep panjang..."></textarea>
+                        <textarea class="form-control" name="deskripsi" rows="3" required placeholder="Contoh: PC tidak bisa menyala dan berbunyi beep panjang..."></textarea>
                     </div>
                     
                     <button type="submit" id="btnSubmit" class="btn btn-primary w-100 fw-bold">Kirim Laporan</button>
@@ -64,7 +69,7 @@
     const notifikasi = document.getElementById('notifikasi');
 
     // PASTE URL WEB APP GOOGLE SCRIPT ANDA DI BAWAH INI
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwXQyEN1iCFMUm5OBtVwGL4K3h4waLO2_BvcA5omW64ykg1dF6Dg_XDZCbdTQy1wxaH/exec';
+    const scriptURL ='https://script.google.com/macros/s/AKfycbz0qKXfUpdtCS0VwfBKmtp_H9ZVBYB51GiuiWPOkzWlJOYLv2wkwx5or4N3AydIjag/exec';
     // FITUR BARU: MENGAMBIL OPSI DARI GOOGLE SHEETS
     document.addEventListener("DOMContentLoaded", function() {
         fetch(scriptURL) // Ini memanggil fungsi doGet() di Apps Script
