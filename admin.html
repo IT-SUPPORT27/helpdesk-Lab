@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Helpdesk IT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Wajib ditambah untuk form pop-up modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style> 
         body { background-color: #f4f7f6; padding-top: 30px; padding-bottom: 50px; } 
         .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); } 
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #e9ecef; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .keluhan-text { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* Efek agar teks catatan terlihat seperti tombol/bisa diklik */
-        .catatan-klik { cursor: pointer; color: #0d6efd; font-size: 0.9em; background-color: #f8f9fa; border-radius: 5px; padding: 5px; border: 1px dashed #0d6efd; transition: 0.2s; }
-        .catatan-klik:hover { background-color: #e9ecef; color: #0a58ca; }
+        .box-penanganan { cursor: pointer; color: #0d6efd; font-size: 0.85em; background-color: #f8f9fa; border-radius: 5px; padding: 8px; border: 1px dashed #0d6efd; transition: 0.2s; }
+        .box-penanganan:hover { background-color: #e9ecef; color: #0a58ca; }
+        .teks-kecil { font-size: 0.85rem; line-height: 1.3; }
     </style>
 </head>
 <body>
@@ -45,7 +46,15 @@
         <div class="table-responsive">
             <table class="table table-striped table-hover align-middle d-none" id="tabelLaporan">
                 <thead class="table-dark">
-                    <tr><th>Waktu</th><th>Ruangan</th><th>Kategori</th><th>Prioritas</th><th>Keluhan</th><th>Catatan Teknisi</th><th>Status</th></tr>
+                    <tr>
+                        <th>Waktu</th>
+                        <th>Pelapor</th>
+                        <th>Ruangan</th>
+                        <th>Prioritas</th>
+                        <th>Keluhan</th>
+                        <th>Laporan Penanganan Teknisi</th>
+                        <th>Status</th>
+                    </tr>
                 </thead>
                 <tbody id="isiTabel"></tbody>
             </table>
@@ -53,15 +62,43 @@
     </div>
 </div>
 
+<!-- FORM POP-UP MODAL (Tanggal, Diagnosis, Solusi) -->
+<div class="modal fade" id="modalPenanganan" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">📝 Catat Penanganan IT</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modalRow">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tanggal Selesai Perbaikan</label>
+            <input type="date" class="form-control" id="modalTgl">
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Hasil Diagnosis Teknisi</label>
+            <textarea class="form-control" id="modalDiagnosis" rows="2" placeholder="Contoh: RAM kendor / Sistem kena virus..."></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Tindakan & Solusi</label>
+            <textarea class="form-control" id="modalSolusi" rows="2" placeholder="Contoh: RAM sudah dibersihkan, PC normal kembali..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="simpanPenanganan()">💾 Simpan Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
     const passwordAdmin = "admin123"; 
+    
+    // URL Web App Anda yang sudah dimasukkan
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbxOymJZ_IiDE5e-2KLvYRAoLIPTzi7euaLPVEUoZyXAAeE9hf3FBV9MLiDh1VqeWH66/exec';
 
-    // ==========================================
-    // MASUKKAN URL WEB APP ANDA DI BAWAH INI
-    // ==========================================
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbwGBrGmsfMf5uMNcCPOqwM63EhqMdHuwIRav0qne759k_rTGD5ohfhi2-Aq81rlSpOE/exec';
-
-    // Manajemen Login
     document.addEventListener("DOMContentLoaded", function() {
         if (localStorage.getItem("admin_logged_in") === "true") {
             document.getElementById('loginScreen').classList.add('d-none');
@@ -82,7 +119,6 @@
     function logoutAdmin() { localStorage.removeItem("admin_logged_in"); location.reload(); }
     document.getElementById("passwordInput").addEventListener("keypress", function(e) { if(e.key === "Enter") { e.preventDefault(); cekPassword(); } });
 
-    // Memuat Data Laporan
     function muatDataLaporan() {
         document.getElementById('tabelLaporan').classList.add('d-none');
         document.getElementById('loadingText').classList.remove('d-none');
@@ -93,6 +129,7 @@
                 document.getElementById('tabelLaporan').classList.remove('d-none');
                 const tbody = document.getElementById('isiTabel');
                 tbody.innerHTML = '';
+                
                 if(data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Belum ada laporan masuk.</td></tr>'; return; }
                 
                 data.forEach(item => {
@@ -105,18 +142,26 @@
                     });
                     statusDropdown += `</select>`;
 
-                    // Mencegah error karakter kutip pada catatan
-                    let safeCatatan = item.catatan ? item.catatan.replace(/'/g, "\\'").replace(/"/g, "&quot;") : ""; 
-                    let tampilanCatatan = item.catatan ? item.catatan : "📝 <i>Klik untuk isi penjelasan</i>";
+                    // Tampilan Tombol/Box Penanganan
+                    let tampilanPenanganan = `<button class="btn btn-sm btn-outline-primary" onclick="bukaModalPenanganan('${item.row}', encodeURIComponent('${item.tglPerbaikan}'), encodeURIComponent('${item.diagnosis}'), encodeURIComponent('${item.solusi}'))">+ Isi Penanganan</button>`;
+                    
+                    if(item.tglPerbaikan || item.diagnosis || item.solusi) {
+                        tampilanPenanganan = `
+                        <div class="box-penanganan text-start" title="Klik untuk mengedit" onclick="bukaModalPenanganan('${item.row}', encodeURIComponent('${item.tglPerbaikan}'), encodeURIComponent('${item.diagnosis}'), encodeURIComponent('${item.solusi}'))">
+                            <div class="teks-kecil"><strong>Tgl:</strong> ${item.tglPerbaikan || '-'}</div>
+                            <div class="teks-kecil"><strong>Diagnosis:</strong> ${item.diagnosis || '-'}</div>
+                            <div class="teks-kecil"><strong>Solusi:</strong> ${item.solusi || '-'}</div>
+                        </div>`;
+                    }
 
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${item.tanggal}<br><small class="text-muted">${item.nama}</small></td>
-                        <td>${item.ruangan}</td>
-                        <td>${item.kategori}</td>
+                        <td>${item.tanggal}<br><small class="text-muted">${item.jam}</small></td>
+                        <td><strong>${item.nama}</strong></td>
+                        <td>${item.ruangan}<br><small class="text-muted">${item.kategori}</small></td>
                         <td><span class="badge ${bgPrioritas}">${item.prioritas}</span></td>
                         <td class="keluhan-text" title="${item.deskripsi}">${item.deskripsi}</td>
-                        <td class="keluhan-text catatan-klik" title="Klik untuk mengubah catatan" onclick="updateCatatan('${item.row}', '${safeCatatan}')">${tampilanCatatan}</td>
+                        <td style="min-width: 280px;">${tampilanPenanganan}</td>
                         <td>${statusDropdown}</td>
                     `;
                     tbody.appendChild(tr);
@@ -124,52 +169,59 @@
             }).catch(err => { document.getElementById('loadingText').innerHTML = '<span class="text-danger">Gagal memuat data. Periksa koneksi.</span>'; });
     }
 
-    // Mengubah Status
     function updateStatus(selectElement) {
         const row = selectElement.getAttribute('data-row');
         const statusBaru = selectElement.value;
         selectElement.disabled = true;
-        const warnaAsli = selectElement.style.backgroundColor;
-        selectElement.style.backgroundColor = "#e9ecef";
-
         const formData = new FormData();
         formData.append('action', 'updateStatus'); formData.append('row', row); formData.append('status', statusBaru);
-
         fetch(scriptURL, { method: 'POST', body: formData })
             .then(res => res.text())
             .then(result => {
                 selectElement.disabled = false;
                 selectElement.style.backgroundColor = statusBaru === 'Selesai' ? '#d1e7dd' : (statusBaru === 'Diproses' ? '#fff3cd' : '#f8d7da');
-            }).catch(err => { alert('Gagal mengupdate status.'); selectElement.disabled = false; selectElement.style.backgroundColor = warnaAsli; });
+            }).catch(err => { alert('Gagal mengupdate status.'); selectElement.disabled = false; });
     }
 
-    // Mengubah Catatan Teknisi
-    function updateCatatan(row, catatanLama) {
-        // Memunculkan kotak dialog input
-        let catatanBaru = prompt("Masukkan Penjelasan Kerusakan / Catatan Perbaikan Teknisi:", catatanLama);
+    let modalPenanganan;
+    function bukaModalPenanganan(row, tglEncoded, diagEncoded, solusiEncoded) {
+        document.getElementById('modalRow').value = row;
         
-        // Memastikan teknisi tidak menekan cancel dan isinya tidak kosong
-        if (catatanBaru !== null) {
-            
-            document.getElementById('tabelLaporan').classList.add('d-none');
-            document.getElementById('loadingText').classList.remove('d-none');
-            document.querySelector('#loadingText p').innerText = "Menyimpan catatan ke database...";
+        document.getElementById('modalTgl').value = decodeURIComponent(tglEncoded) !== 'undefined' ? decodeURIComponent(tglEncoded) : '';
+        document.getElementById('modalDiagnosis').value = decodeURIComponent(diagEncoded) !== 'undefined' ? decodeURIComponent(diagEncoded) : '';
+        document.getElementById('modalSolusi').value = decodeURIComponent(solusiEncoded) !== 'undefined' ? decodeURIComponent(solusiEncoded) : '';
+        
+        if(!modalPenanganan) { modalPenanganan = new bootstrap.Modal(document.getElementById('modalPenanganan')); }
+        modalPenanganan.show();
+    }
 
-            const formData = new FormData();
-            formData.append('action', 'updateCatatan'); 
-            formData.append('row', row); 
-            formData.append('catatan', catatanBaru);
+    function simpanPenanganan() {
+        const row = document.getElementById('modalRow').value;
+        const tgl = document.getElementById('modalTgl').value;
+        const diagnosis = document.getElementById('modalDiagnosis').value;
+        const solusi = document.getElementById('modalSolusi').value;
 
-            fetch(scriptURL, { method: 'POST', body: formData })
-                .then(res => res.text())
-                .then(result => {
-                    document.querySelector('#loadingText p').innerText = "Mengambil data terbaru...";
-                    muatDataLaporan(); // Otomatis refresh tabel
-                }).catch(err => { 
-                    alert('Gagal menyimpan catatan. Silakan periksa koneksi internet Anda.'); 
-                    muatDataLaporan();
-                });
-        }
+        modalPenanganan.hide();
+        document.getElementById('tabelLaporan').classList.add('d-none');
+        document.getElementById('loadingText').classList.remove('d-none');
+        document.querySelector('#loadingText p').innerText = "Menyimpan data penanganan...";
+
+        const formData = new FormData();
+        formData.append('action', 'updatePenanganan'); 
+        formData.append('row', row); 
+        formData.append('tglPerbaikan', tgl);
+        formData.append('diagnosis', diagnosis);
+        formData.append('solusi', solusi);
+
+        fetch(scriptURL, { method: 'POST', body: formData })
+            .then(res => res.text())
+            .then(result => {
+                document.querySelector('#loadingText p').innerText = "Mengambil data terbaru...";
+                muatDataLaporan(); 
+            }).catch(err => { 
+                alert('Gagal menyimpan catatan. Silakan periksa koneksi internet Anda.'); 
+                muatDataLaporan();
+            });
     }
 </script>
 </body>
