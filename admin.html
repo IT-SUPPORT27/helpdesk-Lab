@@ -97,7 +97,7 @@
     const passwordAdmin = "admin123"; 
     
     // URL Web App Anda yang sudah dimasukkan
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbxOymJZ_IiDE5e-2KLvYRAoLIPTzi7euaLPVEUoZyXAAeE9hf3FBV9MLiDh1VqeWH66/exec';
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbz0qKXfUpdtCS0VwfBKmtp_H9ZVBYB51GiuiWPOkzWlJOYLv2wkwx5or4N3AydIjag/exec';
 
     document.addEventListener("DOMContentLoaded", function() {
         if (localStorage.getItem("admin_logged_in") === "true") {
@@ -154,11 +154,12 @@
                         </div>`;
                     }
 
-                    const tr = document.createElement('tr');
+                   const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${item.tanggal}<br><small class="text-muted">${item.jam}</small></td>
                         <td><strong>${item.nama}</strong></td>
-                        <td>${item.ruangan}<br><small class="text-muted">${item.kategori}</small></td>
+                        <!-- FITUR BARU: Menampilkan No PC di bawah Ruangan -->
+                        <td>${item.ruangan}<br><span class="badge bg-secondary">PC: ${item.no_pc}</span><br><small class="text-muted">${item.kategori}</small></td>
                         <td><span class="badge ${bgPrioritas}">${item.prioritas}</span></td>
                         <td class="keluhan-text" title="${item.deskripsi}">${item.deskripsi}</td>
                         <td style="min-width: 280px;">${tampilanPenanganan}</td>
